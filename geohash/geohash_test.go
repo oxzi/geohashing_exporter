@@ -26,6 +26,8 @@ func (_ *testDjiaProvider) Get(date time.Time, _ context.Context) (float64, erro
 		return 10537.08, nil
 
 	// https://geohashing.site/geohashing/30W_Time_Zone_Rule#Testing_for_30W_compliance
+	case "2008-05-23":
+		fallthrough
 	case "2008-05-26":
 		return 12620.90, nil
 	case "2008-05-27":
@@ -34,13 +36,13 @@ func (_ *testDjiaProvider) Get(date time.Time, _ context.Context) (float64, erro
 		return 12542.90, nil
 
 	// https://geohashing.site/geohashing/30W_Time_Zone_Rule#Testing_for_the_scientific_notation_bug
-	case "2012-02-25":
+	case "2012-02-24":
 		fallthrough
 	case "2012-02-26":
 		return 12981.20, nil
 
 	default:
-		return 0.0, fmt.Errorf("unsupported date")
+		return 0.0, fmt.Errorf("unsupported date %v", date)
 	}
 }
 

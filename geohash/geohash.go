@@ -28,6 +28,11 @@ func (provider *GeoHashProvider) Geo(latArea, lonArea int, date time.Time, ctx c
 		queryDate = date.Add(-24 * time.Hour)
 	}
 
+	queryDate, err = CorrectDowDate(queryDate)
+	if err != nil {
+		return
+	}
+
 	djia, err := provider.DjiaProvider.Get(queryDate, ctx)
 	if err != nil {
 		return
