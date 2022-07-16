@@ -41,38 +41,55 @@ func (_ *testDjiaProvider) Get(date time.Time, _ context.Context) (float64, erro
 	case "2012-02-26":
 		return 12981.20, nil
 
+	// Test values for NYSE opening hours
+	case "2022-07-14":
+		return 30451.80, nil
+	case "2022-07-15":
+		return 30775.37, nil
+
 	default:
 		return 0.0, fmt.Errorf("unsupported date %v", date)
 	}
 }
 
 func TestGeoHashProviderGeo(t *testing.T) {
+	locNy := nyseTz()
+	locBerlin, _ := time.LoadLocation("Europe/Berlin")
+
 	tests := []struct {
 		date    string
+		loc     *time.Location
 		latArea int
 		lonArea int
+		isErr   bool
 		lat     float64
 		lon     float64
 	}{
 		// Original comic, https://xkcd.com/426/
-		{"2005-05-26", 37, -122, 37.857713, -122.544544},
+		{"2005-05-26 09:30", locNy, 37, -122, false, 37.857713, -122.544544},
 
 		// https://geohashing.site/geohashing/30W_Time_Zone_Rule#Testing_for_30W_compliance
-		{"2008-05-27", 68, -30, 68.20968, -30.10144},
-		{"2008-05-27", 68, -29, 68.12537, -29.57711},
-		{"2008-05-28", 68, -30, 68.68745, -30.21221},
-		{"2008-05-28", 68, -29, 68.71044, -29.11273},
+		{"2008-05-27 09:30", locNy, 68, -30, false, 68.20968, -30.10144},
+		{"2008-05-27 09:30", locNy, 68, -29, false, 68.12537, -29.57711},
+		{"2008-05-28 09:30", locNy, 68, -30, false, 68.68745, -30.21221},
+		{"2008-05-28 09:30", locNy, 68, -29, false, 68.71044, -29.11273},
 
 		// https://geohashing.site/geohashing/30W_Time_Zone_Rule#Testing_for_the_scientific_notation_bug
-		{"2012-02-26", 68, -30, 68.000047, -30.483719},
-		{"2012-02-26", 68, -29, 68.000047, -29.483719},
+		{"2012-02-26 09:30", locNy, 68, -30, false, 68.000047, -30.483719},
+		{"2012-02-26 09:30", locNy, 68, -29, false, 68.000047, -29.483719},
+
+		// NYSE opening hours in regard of the 30W rule.
+		{"2022-07-15 09:30", locNy, 40, -74, false, 40.117527, -74.382255},
+		{"2022-07-15 09:00", locNy, 40, -74, true, 0.0, 0.0},
+		{"2022-07-15 18:00", locBerlin, 52, 13, false, 52.99140, 13.02058},
+		{"2022-07-15 00:00", locBerlin, 52, 13, false, 52.99140, 13.02058},
 	}
 
 	provider := GeoHashProvider{DjiaProvider: &testDjiaProvider{}}
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%s/%d,%d", test.date, test.latArea, test.lonArea), func(t *testing.T) {
-			date, err := time.Parse("2006-01-02", test.date)
+			date, err := time.ParseInLocation("2006-01-02 15:04", test.date, test.loc)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -81,7 +98,11 @@ func TestGeoHashProviderGeo(t *testing.T) {
 			defer cancel()
 
 			lat, lon, err := provider.Geo(test.latArea, test.lonArea, date, ctx)
-			if err != nil {
+			if (err != nil) != test.isErr {
+				t.Fatalf("expected isErr = %t, err = %v", test.isErr, err)
+			} else if test.isErr {
+				return
+			} else if err != nil {
 				t.Fatal(err)
 			}
 
@@ -96,27 +117,35 @@ func TestGeoHashProviderGeo(t *testing.T) {
 }
 
 func TestGeoHashProviderGlobal(t *testing.T) {
+	locNy := nyseTz()
+	locBerlin, _ := time.LoadLocation("Europe/Berlin")
+
 	tests := []struct {
 		date string
+		loc  *time.Location
 		lat  float64
 		lon  float64
 	}{
 		// https://geohashing.site/geohashing/Globalhash#Example
-		{"2005-05-27", 25.67229, 37.29761},
+		{"2005-05-27 09:30", locNy, 25.67229, 37.29761},
 
 		// https://geohashing.site/geohashing/30W_Time_Zone_Rule#Testing_for_30W_compliance
-		{"2008-05-27", -67.43391, 27.75993},
-		{"2008-05-28", 37.87947, -139.41640},
+		{"2008-05-27 09:30", locNy, -67.43391, 27.75993},
+		{"2008-05-28 09:30", locNy, 37.87947, -139.41640},
 
 		// https://geohashing.site/geohashing/30W_Time_Zone_Rule#Testing_for_the_scientific_notation_bug
-		{"2012-02-26", -89.99161, -5.86128},
+		{"2012-02-26 09:30", locNy, -89.99161, -5.86128},
+
+		// Global hash should be robust against time zones.
+		{"2022-07-16 09:30", locNy, 88.520950, -105.946114},
+		{"2022-07-16 09:30", locBerlin, 88.520950, -105.946114},
 	}
 
 	provider := GeoHashProvider{DjiaProvider: &testDjiaProvider{}}
 
 	for _, test := range tests {
 		t.Run(test.date, func(t *testing.T) {
-			date, err := time.Parse("2006-01-02", test.date)
+			date, err := time.ParseInLocation("2006-01-02 15:04", test.date, test.loc)
 			if err != nil {
 				t.Fatal(err)
 			}

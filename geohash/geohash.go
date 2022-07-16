@@ -15,6 +15,12 @@ import (
 	"time"
 )
 
+// ErrW30NotYetAvailable is returned if coordinates should be calculated west of
+// 30 deg west before the New York Stock Exchange (NYSE) has opened, 09:30.
+//
+// https://geohashing.site/geohashing/30W_Time_Zone_Rule
+var ErrW30NotYetAvailable = fmt.Errorf("coordinates west of 30 deg west are not yet available, 30W rule")
+
 // GeoHashProvider to calculate Geohashing locations.
 type GeoHashProvider struct {
 	DjiaProvider DowJonesIndustrialAvgProvider
@@ -24,8 +30,12 @@ type GeoHashProvider struct {
 // and a date.
 func (provider *GeoHashProvider) Geo(latArea, lonArea int, date time.Time, ctx context.Context) (lat, lon float64, err error) {
 	queryDate := date
+
 	if lonArea > -30 {
 		queryDate = date.Add(-24 * time.Hour)
+	} else if dowHourCheckMarketClosed(date) {
+		err = ErrW30NotYetAvailable
+		return
 	}
 
 	queryDate, err = CorrectDowDate(queryDate)
@@ -59,8 +69,13 @@ func (provider *GeoHashProvider) Geo(latArea, lonArea int, date time.Time, ctx c
 }
 
 // Global hash for a given date.
+//
+// Location information will be stripped to normalize the time.
 func (provider *GeoHashProvider) Global(date time.Time, ctx context.Context) (lat, lon float64, err error) {
-	lat, lon, err = provider.Geo(0, 0, date, ctx)
+	year, month, day := date.Date()
+	normalizedDate := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
+
+	lat, lon, err = provider.Geo(0, 0, normalizedDate, ctx)
 	if err != nil {
 		return
 	}

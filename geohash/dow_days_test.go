@@ -5,9 +5,43 @@
 package geohash
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
+
+func TestDowHourCheckMarketClosed(t *testing.T) {
+	locNy := nyseTz()
+	locBerlin, _ := time.LoadLocation("Europe/Berlin")
+
+	tests := []struct {
+		ts     string
+		loc    *time.Location
+		closed bool
+	}{
+		{"09:30", locNy, false}, // NYSE opening time in NY
+		{"09:29", locNy, true},  // before NYSE opening time in NY
+		{"09:31", locNy, false}, // after NYSE opening time in NY
+
+		{"09:30", locBerlin, true},  // Berlin's 09:30 is too early in NY.
+		{"00:00", locBerlin, false}, // Berlin's midnight is the previous day, still open.
+		{"18:00", locBerlin, false}, // Berlin's 18:00 is late enough to be opened in NY.
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%s-%v", test.ts, test.loc), func(t *testing.T) {
+			date, err := time.ParseInLocation("2006-01-02 15:04", "2022-01-01 "+test.ts, test.loc)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			closed := dowHourCheckMarketClosed(date)
+			if test.closed != closed {
+				t.Fatalf("closed should be %t but is %t", test.closed, closed)
+			}
+		})
+	}
+}
 
 func TestCorrectDowDate(t *testing.T) {
 	tests := []struct {
@@ -54,8 +88,8 @@ func TestCorrectDowDate(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.date, func(t *testing.T) {
-			date, _ := time.Parse("2006-01-02", test.date)
-			corrected, _ := time.Parse("2006-01-02", test.corrected)
+			date, _ := time.ParseInLocation("2006-01-02 15:04", test.date+" 09:30", nyseTz())
+			corrected, _ := time.ParseInLocation("2006-01-02 15:04", test.corrected+" 09:30", nyseTz())
 
 			out, err := CorrectDowDate(date)
 			if err != nil {

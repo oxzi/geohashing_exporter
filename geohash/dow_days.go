@@ -13,9 +13,29 @@ import (
 	"time"
 )
 
+// nyseTz returns the time zone of the NYSE, America/New_York, ET (UTC-05:00)
+// with daylight saving time (UTC-04:00).
+//
+// Please note: This function panics if it is unable to load the time zone.
+func nyseTz() *time.Location {
+	loc, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		panic(err)
+	}
+	return loc
+}
+
 // dowDayValidator is a function mapping a date to a bool, evaluating to true if
 // the NYSE is closed at this date.
 type dowDayValidator func(time.Time) (isClosed bool)
+
+// dowHourCheckMarketClosed verifies a given time against the NYSE opening time
+// in the New York time zone.
+func dowHourCheckMarketClosed(date time.Time) bool {
+	nyseDate := date.In(nyseTz())
+	hour, min, _ := nyseDate.Clock()
+	return hour*100+min < 930
+}
 
 // dowDayCheckWeekend notifies about closed weekends.
 func dowDayCheckWeekend(date time.Time) bool {
@@ -38,8 +58,8 @@ func (yearly *dowYearlyCheck) check(date time.Time) bool {
 		yearly.cache[date.Year()] = yearlyDate
 	}
 
-	_, thisM, thisD := date.Date()
-	_, freeM, freeD := yearlyDate.Date()
+	_, thisM, thisD := date.UTC().Date()
+	_, freeM, freeD := yearlyDate.UTC().Date()
 	return thisM == freeM && thisD == freeD
 }
 
@@ -60,7 +80,7 @@ func mkDowYearly(algorithm func(int) time.Time) dowDayValidator {
 // https://www.opm.gov/policy-data-oversight/pay-leave/federal-holidays/
 func mkDowYearlyFixedDate(month time.Month, day int) dowDayValidator {
 	return mkDowYearly(func(year int) time.Time {
-		day := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
+		day := time.Date(year, month, day, 0, 0, 0, 0, nyseTz())
 
 		switch day.Weekday() {
 		case time.Saturday:
@@ -78,7 +98,7 @@ func mkDowYearlyFixedDate(month time.Month, day int) dowDayValidator {
 // Day occurring each third Monday in January.
 func mkDowYearlyNthDay(month time.Month, nth int, weekday time.Weekday) dowDayValidator {
 	return mkDowYearly(func(year int) time.Time {
-		day := time.Date(year, month, 1, 0, 0, 0, 0, time.UTC)
+		day := time.Date(year, month, 1, 0, 0, 0, 0, nyseTz())
 		for day.Weekday() != weekday {
 			day = day.Add(24 * time.Hour)
 		}
@@ -112,7 +132,7 @@ var (
 
 // dowDayMemorialDay checks for the Memorial Day, last Monday in May.
 var dowDayMemorialDay = mkDowYearly(func(year int) time.Time {
-	day := time.Date(year, time.May, 31, 0, 0, 0, 0, time.UTC)
+	day := time.Date(year, time.May, 31, 0, 0, 0, 0, nyseTz())
 	for day.Weekday() != time.Monday {
 		day = day.Add(-24 * time.Hour)
 	}
@@ -136,9 +156,9 @@ var dowDayGoodFriday = mkDowYearly(func(year int) time.Time {
 
 	goodFriday := 20 + d + e
 	if goodFriday <= 31 {
-		return time.Date(year, time.March, goodFriday, 0, 0, 0, 0, time.UTC)
+		return time.Date(year, time.March, goodFriday, 0, 0, 0, 0, nyseTz())
 	} else {
-		return time.Date(year, time.April, goodFriday-31, 0, 0, 0, 0, time.UTC)
+		return time.Date(year, time.April, goodFriday-31, 0, 0, 0, 0, nyseTz())
 	}
 })
 
@@ -167,6 +187,15 @@ var allDowDayValidators = []dowDayValidator{
 // https://geohashing.site/geohashing/Dow_holiday#Official_Holidays
 func CorrectDowDate(date time.Time) (realDate time.Time, err error) {
 	realDate = date
+
+	// If the NYSE is not opened yet, jump back to the previous day. However, we
+	// cannot subtract 24 hours and handle this check as the other ones, as the
+	// following day would also be too early. As this check operates on the time
+	// and not the date, it needs to be handled separately.
+	if dowHourCheckMarketClosed(realDate) {
+		realDate = realDate.Add(-12 * time.Hour)
+	}
+
 	for i := 0; i < 7; i++ {
 		skip := false
 		for _, validator := range allDowDayValidators {
