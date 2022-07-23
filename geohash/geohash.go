@@ -4,12 +4,15 @@
 
 // This file implements the main xkcd Geohashing algorithm.
 
+// Package geohash provides a 30W compatible implementation of the XKCD
+// Geohashing algorithm.
 package geohash
 
 import (
 	"context"
 	"crypto/md5"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math"
 	"time"
@@ -19,11 +22,27 @@ import (
 // 30 deg west before the New York Stock Exchange (NYSE) has opened, 09:30.
 //
 // https://geohashing.site/geohashing/30W_Time_Zone_Rule
-var ErrW30NotYetAvailable = fmt.Errorf("coordinates west of 30 deg west are not yet available, 30W rule")
+var ErrW30NotYetAvailable = errors.New("coordinates west of 30 deg west are not yet available, 30W rule")
 
 // GeoHashProvider to calculate Geohashing locations.
+//
+// To get an instance, call GetGeoHashProvider.
 type GeoHashProvider struct {
-	DjiaProvider DowJonesIndustrialAvgProvider
+	djiaProvider dowJonesIndustrialAvgProvider
+}
+
+// geoHashProviderInstance is the singleton instance of the GeoHashProvider.
+var geoHashProviderInstance *GeoHashProvider
+
+// GetGeoHashProvider returns a singleton instance of the GeoHashProvider.
+func GetGeoHashProvider() *GeoHashProvider {
+	if geoHashProviderInstance == nil {
+		geoHashProviderInstance = &GeoHashProvider{
+			djiaProvider: newDjiaCache(),
+		}
+	}
+
+	return geoHashProviderInstance
 }
 
 // Geo hash for a given location, latitude and longitude reduced to an integer,
@@ -38,12 +57,12 @@ func (provider *GeoHashProvider) Geo(latArea, lonArea int, date time.Time, ctx c
 		return
 	}
 
-	queryDate, err = CorrectDowDate(queryDate)
+	queryDate, err = correctDowDate(queryDate)
 	if err != nil {
 		return
 	}
 
-	djia, err := provider.DjiaProvider.Get(queryDate, ctx)
+	djia, err := provider.djiaProvider.Get(queryDate, ctx)
 	if err != nil {
 		return
 	}

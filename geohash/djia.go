@@ -52,29 +52,29 @@ func djiaFetch(date time.Time, ctx context.Context) (djia float64, err error) {
 	return
 }
 
-// DowJonesIndustrialAvgProvider describes an interface which allows both
+// dowJonesIndustrialAvgProvider describes an interface which allows both
 // querying and caching DJIA values. The only relevant implementation is
 // geohash.DowJonesIndustrialAvgCache - use geohashing.NewDjiaCache.
-type DowJonesIndustrialAvgProvider interface {
+type dowJonesIndustrialAvgProvider interface {
 	// Get the Dow Jones Industrial Average (DJIA) for the given date.
 	Get(time.Time, context.Context) (float64, error)
 }
 
-// DowJonesIndustrialAvgCache implements geohash.DowJonesIndustrialAvgManager
+// DowJonesIndustrialAvgCache implements geohash.dowJonesIndustrialAvgManager
 // backed by a LRU cache.
-type DowJonesIndustrialAvgCache struct {
+type dowJonesIndustrialAvgCache struct {
 	cache *lru.Cache
 }
 
-// NewDjiaCache to query DJIA with a LRU cache.
-func NewDjiaCache() (djiaCache *DowJonesIndustrialAvgCache) {
-	djiaCache = &DowJonesIndustrialAvgCache{}
+// newDjiaCache to query DJIA with a LRU cache.
+func newDjiaCache() (djiaCache *dowJonesIndustrialAvgCache) {
+	djiaCache = &dowJonesIndustrialAvgCache{}
 	djiaCache.cache, _ = lru.New(16)
 	return
 }
 
 // Get the DJIA value for the given date.
-func (djiaCache *DowJonesIndustrialAvgCache) Get(date time.Time, ctx context.Context) (djia float64, err error) {
+func (djiaCache *dowJonesIndustrialAvgCache) Get(date time.Time, ctx context.Context) (djia float64, err error) {
 	cacheKey := date.Format("2006-01-02")
 	cachedDjia, cacheHit := djiaCache.cache.Get(cacheKey)
 	if cacheHit {

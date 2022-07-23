@@ -12,10 +12,10 @@ import (
 	"time"
 )
 
-// testDjiaProvider is an DowJonesIndustrialAvgProvider for known test values.
-type testDjiaProvider struct{}
+// testdjiaProvider is an DowJonesIndustrialAvgProvider for known test values.
+type testdjiaProvider struct{}
 
-func (_ *testDjiaProvider) Get(date time.Time, _ context.Context) (float64, error) {
+func (_ *testdjiaProvider) Get(date time.Time, _ context.Context) (float64, error) {
 	switch date.Format("2006-01-02") {
 	// https://xkcd.com/426/
 	case "2005-05-26":
@@ -85,7 +85,7 @@ func TestGeoHashProviderGeo(t *testing.T) {
 		{"2022-07-15 00:00", locBerlin, 52, 13, false, 52.99140, 13.02058},
 	}
 
-	provider := GeoHashProvider{DjiaProvider: &testDjiaProvider{}}
+	provider := GeoHashProvider{djiaProvider: &testdjiaProvider{}}
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%s/%d,%d", test.date, test.latArea, test.lonArea), func(t *testing.T) {
@@ -141,7 +141,7 @@ func TestGeoHashProviderGlobal(t *testing.T) {
 		{"2022-07-16 09:30", locBerlin, 88.520950, -105.946114},
 	}
 
-	provider := GeoHashProvider{DjiaProvider: &testDjiaProvider{}}
+	provider := GeoHashProvider{djiaProvider: &testdjiaProvider{}}
 
 	for _, test := range tests {
 		t.Run(test.date, func(t *testing.T) {

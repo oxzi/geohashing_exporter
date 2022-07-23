@@ -91,7 +91,7 @@ func TestCorrectDowDate(t *testing.T) {
 			date, _ := time.ParseInLocation("2006-01-02 15:04", test.date+" 09:30", nyseTz())
 			corrected, _ := time.ParseInLocation("2006-01-02 15:04", test.corrected+" 09:30", nyseTz())
 
-			out, err := CorrectDowDate(date)
+			out, err := correctDowDate(date)
 			if err != nil {
 				t.Fatal(err)
 			}

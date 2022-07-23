@@ -181,11 +181,11 @@ var allDowDayValidators = []dowDayValidator{
 	dowDayGoodFriday,
 }
 
-// CorrectDowDate adjusts a date with regard to the NYSE opening times. Both
+// correctDowDate adjusts a date with regard to the NYSE opening times. Both
 // weekends as well as holidays are being checked.
 //
 // https://geohashing.site/geohashing/Dow_holiday#Official_Holidays
-func CorrectDowDate(date time.Time) (realDate time.Time, err error) {
+func correctDowDate(date time.Time) (realDate time.Time, err error) {
 	realDate = date
 
 	// If the NYSE is not opened yet, jump back to the previous day. However, we
