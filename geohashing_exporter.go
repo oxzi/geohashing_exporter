@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -135,7 +136,7 @@ func metricsHandler(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	latGauge, lonGauge, err := metricsHandlerGauges(lat, lon, tz, ctx)
-	if err != nil {
+	if err != nil && !errors.Is(err, geohash.ErrW30NotYetAvailable) {
 		errMsg := fmt.Sprintf("cannot create gauges: %v", err)
 		log.Printf("Requesting %d,%d at %s failed: %s", lat, lon, tz, errMsg)
 		http.Error(w, errMsg, http.StatusInternalServerError)
