@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2022 Alvar Penning
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+groups:
+- name: geohashing
+  rules:
+  - alert: GeoHashNearby
+    expr: 6367 * 2 * (sqrt(((sin(((50.810222 - geohashing_lat) * 0.017453292519943295) / 2.0)) * (sin(((50.810222 - geohashing_lat) * 0.017453292519943295) / 2.0))) + cos(geohashing_lat * 0.017453292519943295) * 0.6318910366547 * ((sin(((8.767017 - geohashing_lon) * 0.017453292519943295) / 2.0)) * (sin(((8.767017 - geohashing_lon) * 0.017453292519943295) / 2.0)))) atan2 sqrt(1-((sin(((50.810222 - geohashing_lat) * 0.017453292519943295) / 2.0)) * (sin(((50.810222 - geohashing_lat) * 0.017453292519943295) / 2.0))) + cos(geohashing_lat * 0.017453292519943295) * 0.6318910366547 * ((sin(((8.767017 - geohashing_lon) * 0.017453292519943295) / 2.0)) * (sin(((8.767017 - geohashing_lon) * 0.017453292519943295) / 2.0))))) <= 30.0
+    for: 0m
+    labels:
+      severity: warning
+    annotations:
+      summary: Next Geohash in {{ $value }}km in {{ $labels.day_offset }} days
+      description: "A geohash is nearby in {{ $value }}km in the {{ $labels.location }} region in {{ $labels.day_offset }} days."
+
+  - alert: GlobalHashNearby
+    expr: 6367 * 2 * (sqrt(((sin(((50.810222 - geohashing_lat{location="global"}) * 0.017453292519943295) / 2.0)) * (sin(((50.810222 - geohashing_lat{location="global"}) * 0.017453292519943295) / 2.0))) + cos(geohashing_lat{location="global"} * 0.017453292519943295) * 0.6318910366547 * ((sin(((8.767017 - geohashing_lon{location="global"}) * 0.017453292519943295) / 2.0)) * (sin(((8.767017 - geohashing_lon{location="global"}) * 0.017453292519943295) / 2.0)))) atan2 sqrt(1-((sin(((50.810222 - geohashing_lat{location="global"}) * 0.017453292519943295) / 2.0)) * (sin(((50.810222 - geohashing_lat{location="global"}) * 0.017453292519943295) / 2.0))) + cos(geohashing_lat{location="global"} * 0.017453292519943295) * 0.6318910366547 * ((sin(((8.767017 - geohashing_lon{location="global"}) * 0.017453292519943295) / 2.0)) * (sin(((8.767017 - geohashing_lon{location="global"}) * 0.017453292519943295) / 2.0))))) <= 250.0
+    for: 0m
+    labels:
+      severity: warning
+    annotations:
+      summary: Next Globalhash in {{ $value }}km in {{ $labels.day_offset }} days
+      description: "A globalhash is nearby in {{ $value }}km in the {{ $labels.location }} region in {{ $labels.day_offset }} days."
