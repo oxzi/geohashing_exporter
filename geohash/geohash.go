@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"sync"
 	"time"
 )
 
@@ -34,8 +35,15 @@ type GeoHashProvider struct {
 // geoHashProviderInstance is the singleton instance of the GeoHashProvider.
 var geoHashProviderInstance *GeoHashProvider
 
+// geoHashProviderInstanceLock ensures no data race happens when concurrently
+// accessing/creating geoHashProviderInstance.
+var geoHashProviderInstanceLock sync.Mutex
+
 // GetGeoHashProvider returns a singleton instance of the GeoHashProvider.
 func GetGeoHashProvider() *GeoHashProvider {
+	geoHashProviderInstanceLock.Lock()
+	defer geoHashProviderInstanceLock.Unlock()
+
 	if geoHashProviderInstance == nil {
 		geoHashProviderInstance = &GeoHashProvider{
 			djiaProvider: newDjiaCache(),

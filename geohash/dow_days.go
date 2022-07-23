@@ -10,6 +10,7 @@ package geohash
 
 import (
 	"fmt"
+	"sync"
 	"time"
 )
 
@@ -47,19 +48,19 @@ func dowDayCheckWeekend(date time.Time) bool {
 // caches this calculation.
 type dowYearlyCheck struct {
 	algorithm func(int) time.Time
-	cache     map[int]time.Time
+	cache     sync.Map // map[int]time.Time
 }
 
 // check if the given day is the free day in its year.
 func (yearly *dowYearlyCheck) check(date time.Time) bool {
-	yearlyDate, ok := yearly.cache[date.Year()]
+	yearlyDate, ok := yearly.cache.Load(date.Year())
 	if !ok {
 		yearlyDate = yearly.algorithm(date.Year())
-		yearly.cache[date.Year()] = yearlyDate
+		yearly.cache.Store(date.Year(), yearlyDate)
 	}
 
 	_, thisM, thisD := date.UTC().Date()
-	_, freeM, freeD := yearlyDate.UTC().Date()
+	_, freeM, freeD := yearlyDate.(time.Time).UTC().Date()
 	return thisM == freeM && thisD == freeD
 }
 
@@ -67,7 +68,6 @@ func (yearly *dowYearlyCheck) check(date time.Time) bool {
 func mkDowYearly(algorithm func(int) time.Time) dowDayValidator {
 	yearly := &dowYearlyCheck{
 		algorithm: algorithm,
-		cache:     make(map[int]time.Time),
 	}
 	return yearly.check
 }
