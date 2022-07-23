@@ -167,3 +167,107 @@ func TestGeoHashProviderGlobal(t *testing.T) {
 		})
 	}
 }
+
+func TestGeoHashProviderGeoNext(t *testing.T) {
+	locNy := nyseTz()
+	locBerlin, _ := time.LoadLocation("Europe/Berlin")
+
+	tests := []struct {
+		date    string
+		loc     *time.Location
+		latArea int
+		lonArea int
+		locs    []float64
+	}{
+		// No pre-calculation possible, it's a work day.
+		{"2022-07-15 00:00", locBerlin, 52, 13, []float64{52.99140, 13.02058}},
+
+		// Pre-calculated weekend in Berlin.
+		{"2022-07-16 00:00", locBerlin, 52, 13, []float64{52.99178, 13.20571, 52.11295, 13.07143, 52.87523, 13.85938}},
+
+		// Pre-calculated weekend in west of 30W.
+		{"2022-07-16 09:30", locNy, 40, -74, []float64{40.99178, -74.20571, 40.11295, -74.07143}},
+	}
+
+	provider := GeoHashProvider{djiaProvider: &testdjiaProvider{}}
+
+	for _, test := range tests {
+		t.Run(test.date, func(t *testing.T) {
+			date, err := time.ParseInLocation("2006-01-02 15:04", test.date, test.loc)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
+			locs, err := provider.GeoNext(test.latArea, test.lonArea, date, ctx)
+			if err != nil {
+				t.Fatal(err)
+			} else if len(locs) != len(test.locs)/2 {
+				t.Fatalf("expected %d locations instead of %d", len(test.locs)/2, len(locs))
+			}
+
+			for i, latLon := range locs {
+				expLat, expLon := test.locs[2*i], test.locs[2*i+1]
+
+				latDelta := math.Abs(expLat - latLon[0])
+				lonDelta := math.Abs(expLon - latLon[1])
+
+				if latDelta > 0.00001 || lonDelta > 0.00001 {
+					t.Fatalf("offset %d: expected %f, %f instead of %f, %f", i, expLat, expLon, latLon[0], latLon[1])
+				}
+			}
+		})
+	}
+}
+
+func TestGeoHashProviderGlobalNext(t *testing.T) {
+	locNy := nyseTz()
+	locBerlin, _ := time.LoadLocation("Europe/Berlin")
+
+	tests := []struct {
+		date string
+		loc  *time.Location
+		locs []float64
+	}{
+		// No pre-calculation possible, it's a work day.
+		{"2022-07-15 00:00", locBerlin, []float64{88.452771, -172.592008}},
+
+		// Pre-calculated weekend; should be same in each time zone.
+		{"2022-07-16 09:30", locNy, []float64{88.520950, -105.946114, -69.669076, -154.283436, 67.541519, 129.376863}},
+		{"2022-07-16 09:30", locBerlin, []float64{88.520950, -105.946114, -69.669076, -154.283436, 67.541519, 129.376863}},
+	}
+
+	provider := GeoHashProvider{djiaProvider: &testdjiaProvider{}}
+
+	for _, test := range tests {
+		t.Run(test.date, func(t *testing.T) {
+			date, err := time.ParseInLocation("2006-01-02 15:04", test.date, test.loc)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
+			locs, err := provider.GlobalNext(date, ctx)
+			if err != nil {
+				t.Fatal(err)
+			} else if len(locs) != len(test.locs)/2 {
+				t.Fatalf("expected %d locations instead of %d", len(test.locs)/2, len(locs))
+			}
+
+			for i, latLon := range locs {
+				expLat, expLon := test.locs[2*i], test.locs[2*i+1]
+
+				latDelta := math.Abs(expLat - latLon[0])
+				lonDelta := math.Abs(expLon - latLon[1])
+
+				if latDelta > 0.00001 || lonDelta > 0.00001 {
+					t.Fatalf("offset %d: expected %f, %f instead of %f, %f", i, expLat, expLon, latLon[0], latLon[1])
+				}
+			}
+		})
+	}
+}

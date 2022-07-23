@@ -45,10 +45,9 @@ func GetGeoHashProvider() *GeoHashProvider {
 	return geoHashProviderInstance
 }
 
-// Geo hash for a given location, latitude and longitude reduced to an integer,
-// and a date.
-func (provider *GeoHashProvider) Geo(latArea, lonArea int, date time.Time, ctx context.Context) (lat, lon float64, err error) {
-	queryDate := date
+// normalizeDate based on the geographical location and the NYSE holidays.
+func (provider *GeoHashProvider) normalizeDate(latArea, lonArea int, date time.Time) (queryDate time.Time, err error) {
+	queryDate = date
 
 	if lonArea > -30 {
 		queryDate = date.Add(-24 * time.Hour)
@@ -58,6 +57,13 @@ func (provider *GeoHashProvider) Geo(latArea, lonArea int, date time.Time, ctx c
 	}
 
 	queryDate, err = correctDowDate(queryDate)
+	return
+}
+
+// Geo hash for a given location, latitude and longitude reduced to an integer,
+// and a date.
+func (provider *GeoHashProvider) Geo(latArea, lonArea int, date time.Time, ctx context.Context) (lat, lon float64, err error) {
+	queryDate, err := provider.normalizeDate(latArea, lonArea, date)
 	if err != nil {
 		return
 	}
@@ -87,13 +93,17 @@ func (provider *GeoHashProvider) Geo(latArea, lonArea int, date time.Time, ctx c
 	return
 }
 
+// globalNormalizeDate for Globalhash calculation.
+func (provider *GeoHashProvider) globalNormalizeDate(date time.Time) time.Time {
+	year, month, day := date.Date()
+	return time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
+}
+
 // Global hash for a given date.
 //
 // Location information will be stripped to normalize the time.
 func (provider *GeoHashProvider) Global(date time.Time, ctx context.Context) (lat, lon float64, err error) {
-	year, month, day := date.Date()
-	normalizedDate := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
-
+	normalizedDate := provider.globalNormalizeDate(date)
 	lat, lon, err = provider.Geo(0, 0, normalizedDate, ctx)
 	if err != nil {
 		return
@@ -101,6 +111,63 @@ func (provider *GeoHashProvider) Global(date time.Time, ctx context.Context) (la
 
 	lat = lat*180.0 - 90.0
 	lon = lon*360.0 - 180.0
+
+	return
+}
+
+// GeoNext calculates all possible future Geohashes after the given date.
+//
+// It returns an array of a two dimensional float64 array, representing lat and
+// lon. The index of the outer array is offset of days to the requested date
+// parameter, e.g., 0 is the requested date, 1 is the following one, and so on.
+//
+// On weekends or NYSE holidays, the last known Dow Jones Industrial Average
+// indicator will be used. For example, on Saturdays western of 30W, both the
+// date for tomorrow's Sunday as well as the DJIA value is known. Thus, the
+// Geohash's location for the following day can already be calculated.
+func (provider *GeoHashProvider) GeoNext(latArea, lonArea int, date time.Time, ctx context.Context) (locs [][]float64, err error) {
+	for {
+		lat, lon, geoErr := provider.Geo(latArea, lonArea, date, ctx)
+		if geoErr != nil {
+			return nil, geoErr
+		}
+
+		locs = append(locs, []float64{lat, lon})
+
+		baseDate, dateErr := provider.normalizeDate(latArea, lonArea, date)
+		if err != nil {
+			return nil, dateErr
+		}
+
+		date = date.Add(24 * time.Hour)
+
+		compDate, dateErr := provider.normalizeDate(latArea, lonArea, date)
+		if dateErr != nil {
+			return nil, dateErr
+		} else if compDate.After(baseDate) {
+			break
+		}
+	}
+
+	return
+}
+
+// GlobalNext calculates all possible future Globalhashes after the given date.
+//
+// For more information look at the documentation for GeoHashProvider.GeoNext.
+func (provider *GeoHashProvider) GlobalNext(date time.Time, ctx context.Context) (locs [][]float64, err error) {
+	normalizedDate := provider.globalNormalizeDate(date)
+	locs, err = provider.GeoNext(0, 0, normalizedDate, ctx)
+	if err != nil {
+		return
+	}
+
+	for date, latLon := range locs {
+		locs[date] = []float64{
+			latLon[0]*180.0 - 90.0,
+			latLon[1]*360.0 - 180.0,
+		}
+	}
 
 	return
 }
