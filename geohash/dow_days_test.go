@@ -29,7 +29,7 @@ func TestDowHourCheckMarketClosed(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(fmt.Sprintf("%s-%v", test.ts, test.loc), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%s;%v", test.loc, test.ts), func(t *testing.T) {
 			date, err := time.ParseInLocation("2006-01-02 15:04", "2022-01-01 "+test.ts, test.loc)
 			if err != nil {
 				t.Fatal(err)

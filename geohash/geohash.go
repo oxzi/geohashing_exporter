@@ -54,12 +54,15 @@ func GetGeoHashProvider() *GeoHashProvider {
 }
 
 // normalizeDate based on the geographical location and the NYSE holidays.
+//
+// If the given date is a normal NYSE working day western of 30W,
+// ErrW30NotYetAvailable will be returned.
 func (provider *GeoHashProvider) normalizeDate(latArea, lonArea int, date time.Time) (queryDate time.Time, err error) {
 	queryDate = date
 
 	if lonArea > -30 {
 		queryDate = date.Add(-24 * time.Hour)
-	} else if dowHourCheckMarketClosed(date) {
+	} else if dowHourCheckMarketClosed(date) && !isDowHoliday(date) {
 		err = ErrW30NotYetAvailable
 		return
 	}
@@ -143,14 +146,18 @@ func (provider *GeoHashProvider) GeoNext(latArea, lonArea int, date time.Time, c
 		locs = append(locs, []float64{lat, lon})
 
 		baseDate, dateErr := provider.normalizeDate(latArea, lonArea, date)
-		if err != nil {
+		if dateErr != nil {
 			return nil, dateErr
 		}
 
 		date = date.Add(24 * time.Hour)
 
 		compDate, dateErr := provider.normalizeDate(latArea, lonArea, date)
-		if dateErr != nil {
+		if errors.Is(dateErr, ErrW30NotYetAvailable) {
+			// There is at least one coordinate pair in locs and the next possible
+			// day will be a new working day west of 30W, we can stop here.
+			break
+		} else if dateErr != nil {
 			return nil, dateErr
 		} else if compDate.After(baseDate) {
 			break

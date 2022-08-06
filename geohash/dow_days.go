@@ -181,6 +181,16 @@ var allDowDayValidators = []dowDayValidator{
 	dowDayGoodFriday,
 }
 
+// isDowHoliday when the date is either a weekend or a holiday.
+func isDowHoliday(date time.Time) bool {
+	for _, validator := range allDowDayValidators {
+		if validator(date) {
+			return true
+		}
+	}
+	return false
+}
+
 // correctDowDate adjusts a date with regard to the NYSE opening times. Both
 // weekends as well as holidays are being checked.
 //
@@ -188,26 +198,11 @@ var allDowDayValidators = []dowDayValidator{
 func correctDowDate(date time.Time) (realDate time.Time, err error) {
 	realDate = date
 
-	// If the NYSE is not opened yet, jump back to the previous day. However, we
-	// cannot subtract 24 hours and handle this check as the other ones, as the
-	// following day would also be too early. As this check operates on the time
-	// and not the date, it needs to be handled separately.
-	if dowHourCheckMarketClosed(realDate) {
-		realDate = realDate.Add(-12 * time.Hour)
-	}
-
 	for i := 0; i < 7; i++ {
-		skip := false
-		for _, validator := range allDowDayValidators {
-			if validator(realDate) {
-				skip = true
-				break
-			}
-		}
-
-		if !skip {
+		if !isDowHoliday(realDate) {
 			return
 		}
+
 		realDate = realDate.Add(-24 * time.Hour)
 	}
 

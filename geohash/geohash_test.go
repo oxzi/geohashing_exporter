@@ -88,7 +88,7 @@ func TestGeoHashProviderGeo(t *testing.T) {
 	provider := GeoHashProvider{djiaProvider: &testdjiaProvider{}}
 
 	for _, test := range tests {
-		t.Run(fmt.Sprintf("%s/%d,%d", test.date, test.latArea, test.lonArea), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%s;%s/%d,%d", test.loc, test.date, test.latArea, test.lonArea), func(t *testing.T) {
 			date, err := time.ParseInLocation("2006-01-02 15:04", test.date, test.loc)
 			if err != nil {
 				t.Fatal(err)
@@ -144,7 +144,7 @@ func TestGeoHashProviderGlobal(t *testing.T) {
 	provider := GeoHashProvider{djiaProvider: &testdjiaProvider{}}
 
 	for _, test := range tests {
-		t.Run(test.date, func(t *testing.T) {
+		t.Run(fmt.Sprintf("%s;%v", test.loc, test.date), func(t *testing.T) {
 			date, err := time.ParseInLocation("2006-01-02 15:04", test.date, test.loc)
 			if err != nil {
 				t.Fatal(err)
@@ -184,15 +184,25 @@ func TestGeoHashProviderGeoNext(t *testing.T) {
 
 		// Pre-calculated weekend in Berlin.
 		{"2022-07-16 00:00", locBerlin, 52, 13, []float64{52.99178, 13.20571, 52.11295, 13.07143, 52.87523, 13.85938}},
+		{"2022-07-16 09:00", locBerlin, 52, 13, []float64{52.99178, 13.20571, 52.11295, 13.07143, 52.87523, 13.85938}},
+		{"2022-07-16 18:00", locBerlin, 52, 13, []float64{52.99178, 13.20571, 52.11295, 13.07143, 52.87523, 13.85938}},
+		{"2022-07-17 00:00", locBerlin, 52, 13, []float64{52.11295, 13.07143, 52.87523, 13.85938}},
+		{"2022-07-17 09:00", locBerlin, 52, 13, []float64{52.11295, 13.07143, 52.87523, 13.85938}},
+		{"2022-07-17 18:00", locBerlin, 52, 13, []float64{52.11295, 13.07143, 52.87523, 13.85938}},
 
 		// Pre-calculated weekend in west of 30W.
-		{"2022-07-16 09:30", locNy, 40, -74, []float64{40.99178, -74.20571, 40.11295, -74.07143}},
+		{"2022-07-16 00:00", locNy, 40, -74, []float64{40.99178, -74.20571, 40.11295, -74.07143}},
+		{"2022-07-16 09:00", locNy, 40, -74, []float64{40.99178, -74.20571, 40.11295, -74.07143}},
+		{"2022-07-16 18:00", locNy, 40, -74, []float64{40.99178, -74.20571, 40.11295, -74.07143}},
+		{"2022-07-17 00:00", locNy, 40, -74, []float64{40.11295, -74.07143}},
+		{"2022-07-17 09:00", locNy, 40, -74, []float64{40.11295, -74.07143}},
+		{"2022-07-17 18:00", locNy, 40, -74, []float64{40.11295, -74.07143}},
 	}
 
 	provider := GeoHashProvider{djiaProvider: &testdjiaProvider{}}
 
 	for _, test := range tests {
-		t.Run(test.date, func(t *testing.T) {
+		t.Run(fmt.Sprintf("%s;%v", test.loc, test.date), func(t *testing.T) {
 			date, err := time.ParseInLocation("2006-01-02 15:04", test.date, test.loc)
 			if err != nil {
 				t.Fatal(err)
@@ -242,7 +252,7 @@ func TestGeoHashProviderGlobalNext(t *testing.T) {
 	provider := GeoHashProvider{djiaProvider: &testdjiaProvider{}}
 
 	for _, test := range tests {
-		t.Run(test.date, func(t *testing.T) {
+		t.Run(fmt.Sprintf("%s;%v", test.loc, test.date), func(t *testing.T) {
 			date, err := time.ParseInLocation("2006-01-02 15:04", test.date, test.loc)
 			if err != nil {
 				t.Fatal(err)
