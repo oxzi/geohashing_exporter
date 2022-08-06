@@ -152,6 +152,8 @@ func metricsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	toLeastPrivilege()
+
 	listenAddr := flag.String("listen", ":9426", "Listen address to be bound to")
 	flag.Parse()
 
