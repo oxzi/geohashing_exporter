@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2022 Alvar Penning
+// SPDX-FileCopyrightText: 2022, 2023 Alvar Penning
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -17,8 +17,8 @@ import (
 	syscallset "github.com/oxzi/syscallset-go"
 )
 
-//go:linkname zoneSources time.zoneSources
-var zoneSources []string
+//go:linkname platformZoneSources time.platformZoneSources
+var platformZoneSources []string
 
 // toLeastPrivilegeLandlock limits with Linux' Landlock.
 //
@@ -39,7 +39,7 @@ func toLeastPrivilegeLandlock() {
 
 	allowedZoneSourceDirs := []string{}
 	allowedZoneSourceFiles := []string{}
-	for _, zoneSource := range zoneSources {
+	for _, zoneSource := range platformZoneSources {
 		info, err := os.Stat(zoneSource)
 		if err != nil {
 			continue
