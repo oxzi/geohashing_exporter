@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2022 Alvar Penning
+// SPDX-FileCopyrightText: 2022, 2023 Alvar Penning
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"time"
 
-	lru "github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 )
 
 // djiaFetch the DJIA for the given date.
@@ -63,13 +63,13 @@ type dowJonesIndustrialAvgProvider interface {
 // DowJonesIndustrialAvgCache implements geohash.dowJonesIndustrialAvgManager
 // backed by a LRU cache.
 type dowJonesIndustrialAvgCache struct {
-	cache *lru.Cache
+	cache *lru.Cache[string, float64]
 }
 
 // newDjiaCache to query DJIA with a LRU cache.
 func newDjiaCache() (djiaCache *dowJonesIndustrialAvgCache) {
 	djiaCache = &dowJonesIndustrialAvgCache{}
-	djiaCache.cache, _ = lru.New(16)
+	djiaCache.cache, _ = lru.New[string, float64](16)
 	return
 }
 
@@ -78,7 +78,7 @@ func (djiaCache *dowJonesIndustrialAvgCache) Get(date time.Time, ctx context.Con
 	cacheKey := date.Format("2006-01-02")
 	cachedDjia, cacheHit := djiaCache.cache.Get(cacheKey)
 	if cacheHit {
-		djia = cachedDjia.(float64)
+		djia = cachedDjia
 		return
 	}
 

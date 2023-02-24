@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2022 Alvar Penning
+// SPDX-FileCopyrightText: 2022, 2023 Alvar Penning
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -68,7 +68,7 @@ func TestDowJonesIndustrialAvgCache(t *testing.T) {
 	date, _ := time.Parse("2006-01-02", dateStr)
 
 	if v, ok := djiaCache.cache.Get(dateStr); ok {
-		t.Fatalf("entry exists before fetching, %q", v)
+		t.Fatalf("entry exists before fetching, %v", v)
 	}
 
 	djia, err := djiaCache.Get(date, ctx)
@@ -78,7 +78,7 @@ func TestDowJonesIndustrialAvgCache(t *testing.T) {
 
 	if v, ok := djiaCache.cache.Get(dateStr); !ok {
 		t.Fatal("entry is not in cache")
-	} else if djiaCache := v.(float64); djiaCache != djia {
+	} else if djiaCache := v; djiaCache != djia {
 		t.Fatalf("%f != %f", djia, djiaCache)
 	}
 
