@@ -18,12 +18,9 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 )
 
-// djiaFetch the DJIA for the given date.
-//
-// The function utilizes the recommended API at geo.crox.net,
-// https://geohashing.site/geohashing/Dow_Jones_Industrial_Average#geo.crox.net_.28recommended.29
-func djiaFetch(date time.Time, ctx context.Context) (djia float64, err error) {
-	reqUrl := date.Format("http://geo.crox.net/djia/2006/01/02")
+// djiaFetchApi the DJIA for the given date utilizing a given API endpoint.
+func djiaFetchApi(apiUrl string, date time.Time, ctx context.Context) (djia float64, err error) {
+	reqUrl := date.Format(apiUrl)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqUrl, nil)
 	if err != nil {
 		return
@@ -41,14 +38,61 @@ func djiaFetch(date time.Time, ctx context.Context) (djia float64, err error) {
 	}
 
 	if res.StatusCode == http.StatusNotFound {
-		err = fmt.Errorf("geo.crox.net fails with %d, %q", res.StatusCode, body)
+		err = fmt.Errorf("DJIA API at %q fails with %d, %q", reqUrl, res.StatusCode, body)
 		return
 	} else if res.StatusCode != http.StatusOK {
-		err = fmt.Errorf("geo.crox.net fails with unexpected status code %d", res.StatusCode)
+		err = fmt.Errorf("DJIA API at %q fails with unexpected status code %d", reqUrl, res.StatusCode)
 		return
 	}
 
 	djia, err = strconv.ParseFloat(string(body), 64)
+	return
+}
+
+// djiaFetch the DJIA for the given date utilizing different APIs.
+func djiaFetch(date time.Time, ctx context.Context) (djia float64, err error) {
+	apiUrls := []string{
+		// https://geohashing.site/geohashing/Dow_Jones_Industrial_Average#geo.crox.net_.28recommended.29
+		"http://geo.crox.net/djia/2006/01/02",
+
+		// https://geohashing.site/geohashing/Dow_Jones_Industrial_Average#carabiner.peeron.com
+		"http://carabiner.peeron.com/xkcd/map/data/2006/01/02",
+	}
+
+	type djiaApiResult struct {
+		djia float64
+		err  error
+	}
+
+	subCtx, subCtxCancel := context.WithCancel(ctx)
+	defer subCtxCancel()
+
+	results := make(chan djiaApiResult, len(apiUrls))
+
+	for _, apiUrl := range apiUrls {
+		go func(apiUrl string) {
+			var result djiaApiResult
+			result.djia, result.err = djiaFetchApi(apiUrl, date, subCtx)
+			results <- result
+		}(apiUrl)
+	}
+	for i := 0; i < len(apiUrls); i++ {
+		result := <-results
+
+		if result.err == nil {
+			djia = result.djia
+			err = nil
+			return
+		}
+
+		if err == nil {
+			err = result.err
+		} else {
+			err = fmt.Errorf("%v, %w", err, result.err)
+		}
+	}
+
+	err = fmt.Errorf("Cannot fetch DJIA from any API: %w", err)
 	return
 }
 
